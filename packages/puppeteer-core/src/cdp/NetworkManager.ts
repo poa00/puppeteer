@@ -8,6 +8,7 @@ import type {Protocol} from 'devtools-protocol';
 
 import {CDPSessionEvent, type CDPSession} from '../api/CDPSession.js';
 import type {Frame} from '../api/Frame.js';
+import type {Credentials} from '../api/Page.js';
 import {EventEmitter, EventSubscription} from '../common/EventEmitter.js';
 import {
   NetworkManagerEvent,
@@ -23,14 +24,6 @@ import {
   NetworkEventManager,
   type FetchRequestId,
 } from './NetworkEventManager.js';
-
-/**
- * @public
- */
-export interface Credentials {
-  username: string;
-  password: string;
-}
 
 /**
  * @public
@@ -72,7 +65,7 @@ export class NetworkManager extends EventEmitter<NetworkManagerEvents> {
   #frameManager: FrameProvider;
   #networkEventManager = new NetworkEventManager();
   #extraHTTPHeaders?: Record<string, string>;
-  #credentials?: Credentials;
+  #credentials: Credentials | null = null;
   #attemptedAuthentications = new Set<string>();
   #userRequestInterceptionEnabled = false;
   #protocolRequestInterceptionEnabled = false;
@@ -135,7 +128,7 @@ export class NetworkManager extends EventEmitter<NetworkManagerEvents> {
     this.#clients.delete(client);
   }
 
-  async authenticate(credentials?: Credentials): Promise<void> {
+  async authenticate(credentials: Credentials | null): Promise<void> {
     this.#credentials = credentials;
     const enabled = this.#userRequestInterceptionEnabled || !!this.#credentials;
     if (enabled === this.#protocolRequestInterceptionEnabled) {

@@ -32,7 +32,7 @@ import type {HTTPResponse} from '../api/HTTPResponse.js';
 import type {Accessibility} from '../cdp/Accessibility.js';
 import type {Coverage} from '../cdp/Coverage.js';
 import type {DeviceRequestPrompt} from '../cdp/DeviceRequestPrompt.js';
-import type {Credentials, NetworkConditions} from '../cdp/NetworkManager.js';
+import type {NetworkConditions} from '../cdp/NetworkManager.js';
 import type {Tracing} from '../cdp/Tracing.js';
 import type {ConsoleMessage} from '../common/ConsoleMessage.js';
 import type {
@@ -510,6 +510,14 @@ export interface PageEvents extends Record<EventType, unknown> {
   [PageEvent.RequestServedFromCache]: HTTPRequest;
   [PageEvent.WorkerCreated]: WebWorker;
   [PageEvent.WorkerDestroyed]: WebWorker;
+}
+
+/**
+ * @public
+ */
+export interface Credentials {
+  username: string;
+  password: string;
 }
 
 /**
@@ -1417,7 +1425,7 @@ export abstract class Page extends EventEmitter<PageEvents> {
    * @remarks
    * To disable authentication, pass `null`.
    */
-  abstract authenticate(credentials: Credentials): Promise<void>;
+  abstract authenticate(credentials: Credentials | null): Promise<void>;
 
   /**
    * The extra HTTP headers will be sent with every request the page initiates.
