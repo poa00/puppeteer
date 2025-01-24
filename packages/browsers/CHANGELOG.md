@@ -1,5 +1,112 @@
 # Changelog
 
+## [2.7.0](https://github.com/puppeteer/puppeteer/compare/browsers-v2.6.1...browsers-v2.7.0) (2025-01-09)
+
+
+### Features
+
+* resolve relative paths to absolute before unpacking ([#13466](https://github.com/puppeteer/puppeteer/issues/13466)) ([f23c391](https://github.com/puppeteer/puppeteer/commit/f23c391e3c22bf9c9e9ff2c400f5a0c6b07effad))
+
+
+### Bug Fixes
+
+* skip retries for same URL ([#13469](https://github.com/puppeteer/puppeteer/issues/13469)) ([04135ec](https://github.com/puppeteer/puppeteer/commit/04135ec6571312e4dbec0fead182beb8ec9f39d0))
+
+## [2.6.1](https://github.com/puppeteer/puppeteer/compare/browsers-v2.6.0...browsers-v2.6.1) (2024-12-10)
+
+
+### Bug Fixes
+
+* support .tar.xz archives for Firefox 135+ ([#13391](https://github.com/puppeteer/puppeteer/issues/13391)) ([d247a7f](https://github.com/puppeteer/puppeteer/commit/d247a7fcd4fc01cf0c53d733632a1e9687b8004d))
+
+## [2.6.0](https://github.com/puppeteer/puppeteer/compare/browsers-v2.5.0...browsers-v2.6.0) (2024-12-09)
+
+
+### Features
+
+* allow listing installed browsers ([#13385](https://github.com/puppeteer/puppeteer/issues/13385)) ([8b814bf](https://github.com/puppeteer/puppeteer/commit/8b814bfd1bfb5156d4d1334c7d2d3292ea17fbfc))
+
+## [2.5.0](https://github.com/puppeteer/puppeteer/compare/browsers-v2.4.1...browsers-v2.5.0) (2024-12-03)
+
+
+### Features
+
+* support LaunchOptions in executablePath() ([#13340](https://github.com/puppeteer/puppeteer/issues/13340)) ([6acfee6](https://github.com/puppeteer/puppeteer/commit/6acfee6810da378844d4dca7f28d539dd46a3529))
+
+## [2.4.1](https://github.com/puppeteer/puppeteer/compare/browsers-v2.4.0...browsers-v2.4.1) (2024-11-04)
+
+
+### Bug Fixes
+
+* **browsers:** correctly import yargs for esm module ([#13249](https://github.com/puppeteer/puppeteer/issues/13249)) ([694fef9](https://github.com/puppeteer/puppeteer/commit/694fef9f4ea61a9fa65a8dddff73dc6b81e8986a))
+
+## [2.4.0](https://github.com/puppeteer/puppeteer/compare/browsers-v2.3.1...browsers-v2.4.0) (2024-09-04)
+
+
+### Features
+
+* support --install-deps flag in the browsers CLI ([#12580](https://github.com/puppeteer/puppeteer/issues/12580)) ([b832417](https://github.com/puppeteer/puppeteer/commit/b832417eede8506b0fb70d4e4fceb0fa9655cdf5))
+
+## [2.3.1](https://github.com/puppeteer/puppeteer/compare/browsers-v2.3.0...browsers-v2.3.1) (2024-08-14)
+
+
+### Bug Fixes
+
+* **firefox:** back up user.js as well ([#12943](https://github.com/puppeteer/puppeteer/issues/12943)) ([9feda9c](https://github.com/puppeteer/puppeteer/commit/9feda9cdfce81cb375193d0efa9efa0c13b2818d))
+
+## [2.3.0](https://github.com/puppeteer/puppeteer/compare/browsers-v2.2.4...browsers-v2.3.0) (2024-07-25)
+
+
+### Features
+
+* allow downloading of all pinned browsers ([#12806](https://github.com/puppeteer/puppeteer/issues/12806)) ([e72e7ab](https://github.com/puppeteer/puppeteer/commit/e72e7ab515f31d805f89860bbac6aced5a63a868))
+
+
+### Bug Fixes
+
+* configure sandbox permissions for Chrome on Windows ([#12430](https://github.com/puppeteer/puppeteer/issues/12430)) ([b1bf89d](https://github.com/puppeteer/puppeteer/commit/b1bf89d482a830aa7d43af7b53779f6c9988f0d9))
+
+## [2.2.4](https://github.com/puppeteer/puppeteer/compare/browsers-v2.2.3...browsers-v2.2.4) (2024-07-17)
+
+
+### Bug Fixes
+
+* use spawn instead of exec in fileUtil ([#12758](https://github.com/puppeteer/puppeteer/issues/12758)) ([9ce6a85](https://github.com/puppeteer/puppeteer/commit/9ce6a8528969f3895899e3556c527ffd0d3f5c1c))
+
+## [2.2.3](https://github.com/puppeteer/puppeteer/compare/browsers-v2.2.2...browsers-v2.2.3) (2024-04-25)
+
+
+### Bug Fixes
+
+* **performance:** speed up Firefox profile creation ([#12320](https://github.com/puppeteer/puppeteer/issues/12320)) ([c9a5644](https://github.com/puppeteer/puppeteer/commit/c9a5644c65197a7458995092c332545482d04ee2))
+
+## [2.2.2](https://github.com/puppeteer/puppeteer/compare/browsers-v2.2.1...browsers-v2.2.2) (2024-04-15)
+
+
+### Bug Fixes
+
+* remove NetworkServiceInProcess2 set by default ([#12261](https://github.com/puppeteer/puppeteer/issues/12261)) ([ff4f70f](https://github.com/puppeteer/puppeteer/commit/ff4f70f4ae7ca8deb0becbec2e49b35322dba336)), closes [#12257](https://github.com/puppeteer/puppeteer/issues/12257)
+
+## [2.2.1](https://github.com/puppeteer/puppeteer/compare/browsers-v2.2.0...browsers-v2.2.1) (2024-04-05)
+
+
+### Bug Fixes
+
+* do not use fallback download URLs if custom baseUrl is provided ([#12206](https://github.com/puppeteer/puppeteer/issues/12206)) ([ab560bc](https://github.com/puppeteer/puppeteer/commit/ab560bcf6fee57cabde94d9d261d28ffc2112948))
+* only set up a single process event listener in launch ([#12200](https://github.com/puppeteer/puppeteer/issues/12200)) ([7bc5e0f](https://github.com/puppeteer/puppeteer/commit/7bc5e0fb2dc443765e2512e4dc15fb2bcc1cb4be))
+
+## [2.2.0](https://github.com/puppeteer/puppeteer/compare/browsers-v2.1.0...browsers-v2.2.0) (2024-03-15)
+
+
+### Features
+
+* allow downloading Firefox channels other than nightly ([#12051](https://github.com/puppeteer/puppeteer/issues/12051)) ([e4cc2f9](https://github.com/puppeteer/puppeteer/commit/e4cc2f9ee944f2507a03cf8f5af99759c97ee2ec))
+
+
+### Bug Fixes
+
+* don't keep connection alive ([#12096](https://github.com/puppeteer/puppeteer/issues/12096)) ([0a142bf](https://github.com/puppeteer/puppeteer/commit/0a142bf0aa8a6666d1ca230d05a1ece0e03ad7d4))
+
 ## [2.1.0](https://github.com/puppeteer/puppeteer/compare/browsers-v2.0.1...browsers-v2.1.0) (2024-02-21)
 
 

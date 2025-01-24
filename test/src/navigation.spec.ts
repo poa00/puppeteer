@@ -55,6 +55,18 @@ describe('navigation', function () {
       const response = await page.goto(server.PREFIX + '/historyapi.html');
       expect(response!.status()).toBe(200);
     });
+    it('should return response when page replaces its state during load', async () => {
+      const {page, server} = await getTestState();
+
+      const response = await page.goto(
+        server.PREFIX + '/historyapi-replaceState.html',
+        {
+          waitUntil: 'networkidle2',
+        },
+      );
+      expect(response!.status()).toBe(200);
+      expect(page.url()).toBe(server.PREFIX + '/historyapi-replaceState.html');
+    });
     it('should work with subframes return 204', async () => {
       const {page, server} = await getTestState();
 
@@ -106,11 +118,32 @@ describe('navigation', function () {
           () => {
             return history.replaceState(null, 'initial', window.location.href);
           },
-          false
+          false,
         );
       });
       const response = await page.goto(server.PREFIX + '/grid.html');
       expect(response!.status()).toBe(200);
+    });
+    it('should work when reload causes history API in beforeunload', async () => {
+      const {page, server} = await getTestState();
+
+      await page.goto(server.EMPTY_PAGE);
+      await page.evaluate(() => {
+        window.addEventListener(
+          'beforeunload',
+          () => {
+            return history.replaceState(null, 'initial', window.location.href);
+          },
+          false,
+        );
+      });
+      await page.reload();
+      // Evaluate still works.
+      expect(
+        await page.evaluate(() => {
+          return 1;
+        }),
+      ).toBe(1);
     });
     it('should navigate to empty page with networkidle0', async () => {
       const {page, server} = await getTestState();
@@ -127,7 +160,7 @@ describe('navigation', function () {
         server.PREFIX + '/frames/one-frame.html',
         {
           waitUntil: 'networkidle0',
-        }
+        },
       );
       expect(response!.status()).toBe(200);
     });
@@ -203,7 +236,7 @@ describe('navigation', function () {
           return (error = error_);
         });
       expect(error.message).toMatch(
-        /net::ERR_CONNECTION_REFUSED|NS_ERROR_CONNECTION_REFUSED/
+        /net::ERR_CONNECTION_REFUSED|NS_ERROR_CONNECTION_REFUSED/,
       );
     });
     it('should fail when exceeding maximum navigation timeout', async () => {
@@ -281,6 +314,16 @@ describe('navigation', function () {
 
       const response = (await page.goto(server.EMPTY_PAGE))!;
       expect(response.ok()).toBe(true);
+    });
+
+    it('should work when navigating to a URL with a client redirect', async () => {
+      const {page, server} = await getTestState();
+
+      const response = (await page.goto(
+        server.PREFIX + '/client-redirect.html',
+      ))!;
+      expect(response.ok()).toBe(true);
+      expect(response.url()).toBe(server.PREFIX + '/client-redirect.html');
     });
     it('should work when navigating to data url', async () => {
       const {page} = await getTestState();
@@ -473,7 +516,7 @@ describe('navigation', function () {
           const page = await context.newPage();
           await page.goto(server.EMPTY_PAGE);
           await page.close();
-        })
+        }),
       );
       process.removeListener('warning', warningHandler);
       expect(warning).toBe(null);
@@ -500,9 +543,9 @@ describe('navigation', function () {
       });
       const response = (await page.goto(server.EMPTY_PAGE + '#hash'))!;
       expect(response.status()).toBe(200);
-      expect(response.url()).toBe(server.EMPTY_PAGE);
+      expect(response.url()).toBe(server.EMPTY_PAGE + '#hash');
       expect(requests).toHaveLength(1);
-      expect(requests[0]!.url()).toBe(server.EMPTY_PAGE);
+      expect(requests[0]!.url()).toBe(server.EMPTY_PAGE + '#hash');
     });
     it('should work with self requesting page', async () => {
       const {page, server} = await getTestState();
@@ -566,7 +609,7 @@ describe('navigation', function () {
       await page.goto(server.EMPTY_PAGE);
       const [response] = await Promise.all([
         page.waitForNavigation(),
-        page.evaluate((url: string) => {
+        page.evaluate(url => {
           return (window.location.href = url);
         }, server.PREFIX + '/grid.html'),
       ]);
@@ -698,9 +741,6 @@ describe('navigation', function () {
           waitEvent(page, 'frameattached').then(_frame => {
             return (frame = _frame);
           }),
-          waitEvent(page, 'framenavigated', f => {
-            return f === frame;
-          }),
         ]),
         Deferred.create({
           message: `should work when subframe issues window.stop()`,
@@ -708,7 +748,7 @@ describe('navigation', function () {
         }),
       ]);
       const navigationPromise = page.goto(
-        server.PREFIX + '/frames/one-frame.html'
+        server.PREFIX + '/frames/one-frame.html',
       );
       try {
         await eventPromises;
@@ -722,6 +762,17 @@ describe('navigation', function () {
         }),
         navigationPromise,
       ]);
+    });
+    it('should be cancellable', async () => {
+      const {page} = await getTestState();
+
+      const abortController = new AbortController();
+      const task = page.waitForNavigation({
+        signal: abortController.signal,
+      });
+
+      abortController.abort();
+      await expect(task).rejects.toThrow(/aborted/);
     });
   });
 
@@ -849,7 +900,7 @@ describe('navigation', function () {
       const frame = page.frames()[1]!;
       const [response] = await Promise.all([
         frame.waitForNavigation(),
-        frame.evaluate((url: string) => {
+        frame.evaluate(url => {
           return (window.location.href = url);
         }, server.PREFIX + '/grid.html'),
       ]);
@@ -898,7 +949,7 @@ describe('navigation', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any)._foo;
-        })
+        }),
       ).toBe(undefined);
     });
   });

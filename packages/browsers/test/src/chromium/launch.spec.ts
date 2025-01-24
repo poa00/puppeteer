@@ -29,7 +29,7 @@ describe('Chromium', () => {
         buildId: '123',
         cacheDir: '.cache',
       }),
-      path.join('.cache', 'chromium', 'linux-123', 'chrome-linux', 'chrome')
+      path.join('.cache', 'chromium', 'linux-123', 'chrome-linux', 'chrome'),
     );
   });
 
@@ -42,7 +42,7 @@ describe('Chromium', () => {
 
     beforeEach(async () => {
       tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), 'puppeteer-browsers-test')
+        path.join(os.tmpdir(), 'puppeteer-browsers-test'),
       );
       await install({
         cacheDir: tmpDir,
@@ -77,7 +77,6 @@ describe('Chromium', () => {
         '--disable-renderer-backgrounding',
         '--disable-sync',
         '--enable-automation',
-        '--enable-features=NetworkServiceInProcess2',
         '--export-tagged-pdf',
         '--force-color-profile=srgb',
         '--headless=new',

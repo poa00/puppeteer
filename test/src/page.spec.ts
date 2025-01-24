@@ -205,12 +205,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
       expect(
         await popup.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(true);
     });
     it('should work with noopener', async () => {
@@ -225,12 +225,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
       expect(
         await popup.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
     });
     it('should work with clicking target=_blank and without rel=opener', async () => {
@@ -245,12 +245,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
       expect(
         await popup.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
     });
     it('should work with clicking target=_blank and with rel=opener', async () => {
@@ -258,7 +258,7 @@ describe('Page', function () {
 
       await page.goto(server.EMPTY_PAGE);
       await page.setContent(
-        '<a target=_blank rel=opener href="/one-style.html">yo</a>'
+        '<a target=_blank rel=opener href="/one-style.html">yo</a>',
       );
       const [popup] = await Promise.all([
         waitEvent<Page>(page, 'popup'),
@@ -267,12 +267,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
       expect(
         await popup.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(true);
     });
     it('should work with fake-clicking target=_blank and rel=noopener', async () => {
@@ -280,23 +280,23 @@ describe('Page', function () {
 
       await page.goto(server.EMPTY_PAGE);
       await page.setContent(
-        '<a target=_blank rel=noopener href="/one-style.html">yo</a>'
+        '<a target=_blank rel=noopener href="/one-style.html">yo</a>',
       );
       const [popup] = await Promise.all([
         waitEvent<Page>(page, 'popup'),
         page.$eval('a', a => {
-          return (a as HTMLAnchorElement).click();
+          return a.click();
         }),
       ]);
       expect(
         await page.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
       expect(
         await popup.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
     });
     it('should work with clicking target=_blank and rel=noopener', async () => {
@@ -304,7 +304,7 @@ describe('Page', function () {
 
       await page.goto(server.EMPTY_PAGE);
       await page.setContent(
-        '<a target=_blank rel=noopener href="/one-style.html">yo</a>'
+        '<a target=_blank rel=noopener href="/one-style.html">yo</a>',
       );
       const [popup] = await Promise.all([
         waitEvent<Page>(page, 'popup'),
@@ -313,12 +313,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
       expect(
         await popup.evaluate(() => {
           return !!window.opener;
-        })
+        }),
       ).toBe(false);
     });
   });
@@ -378,19 +378,19 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return window.navigator.onLine;
-        })
+        }),
       ).toBe(true);
       await page.setOfflineMode(true);
       expect(
         await page.evaluate(() => {
           return window.navigator.onLine;
-        })
+        }),
       ).toBe(false);
       await page.setOfflineMode(false);
       expect(
         await page.evaluate(() => {
           return window.navigator.onLine;
-        })
+        }),
       ).toBe(true);
     });
   });
@@ -408,11 +408,6 @@ describe('Page', function () {
       expect(message.text()).toEqual('hello 5 JSHandle@object');
       expect(message.type()).toEqual('log');
       expect(message.args()).toHaveLength(3);
-      expect(message.location()).toEqual({
-        url: expect.any(String),
-        lineNumber: expect.any(Number),
-        columnNumber: expect.any(Number),
-      });
 
       expect(await message.args()[0]!.jsonValue()).toEqual('hello');
       expect(await message.args()[1]!.jsonValue()).toEqual(5);
@@ -425,7 +420,7 @@ describe('Page', function () {
         waitEvent<ConsoleMessage>(page, 'console'),
         page.goto(
           // Firefox prints warn if <!DOCTYPE html> is not present
-          `data:text/html,<!DOCTYPE html><script>console.log('SOME_LOG_MESSAGE');</script>`
+          `data:text/html,<!DOCTYPE html><script>console.log('SOME_LOG_MESSAGE');</script>`,
         ),
       ]);
 
@@ -449,12 +444,12 @@ describe('Page', function () {
       expect(
         messages.map(msg => {
           return msg.type();
-        })
+        }),
       ).toEqual(['trace', 'dir', 'warn', 'error', 'log']);
       expect(
         messages.map(msg => {
           return msg.text();
-        })
+        }),
       ).toEqual([
         'calling console.trace',
         'calling console.dir',
@@ -479,9 +474,30 @@ describe('Page', function () {
       expect(
         messages.map(msg => {
           return msg.type();
-        })
+        }),
       ).toEqual(['timeEnd']);
       expect(messages[0]!.text()).toContain('calling console.time');
+    });
+    it('should work for different console API calls with group functions', async () => {
+      const {page} = await getTestState();
+
+      const messages: ConsoleMessage[] = [];
+      page.on('console', msg => {
+        return messages.push(msg);
+      });
+      // All console events will be reported before `page.evaluate` is finished.
+      await page.evaluate(() => {
+        console.group('calling console.group');
+        console.groupEnd();
+      });
+      expect(
+        messages.map(msg => {
+          return msg.type();
+        }),
+      ).toEqual(['startGroup', 'endGroup']);
+
+      // We should be able to check both messages, but Chrome report text
+      expect(messages[0]!.text()).toContain('calling console.group');
     });
     it('should not fail for window object', async () => {
       const {page} = await getTestState();
@@ -506,11 +522,14 @@ describe('Page', function () {
         console.log(1, 2, 3, globalThis);
       });
       const log = await logPromise;
-      expect(log.text()).toBe('1 2 3 JSHandle@object');
+
+      expect(log.text()).atLeastOneToContain([
+        '1 2 3 JSHandle@object',
+        '1 2 3 JSHandle@window',
+      ]);
       expect(log.args()).toHaveLength(4);
-      expect(await (await log.args()[3]!.getProperty('test')).jsonValue()).toBe(
-        1
-      );
+      using property = await log.args()[3]!.getProperty('test');
+      expect(await property.jsonValue()).toBe(1);
     });
     it('should trigger correct Log', async () => {
       const {page, server, isChrome} = await getTestState();
@@ -518,7 +537,7 @@ describe('Page', function () {
       await page.goto('about:blank');
       const [message] = await Promise.all([
         waitEvent(page, 'console'),
-        page.evaluate(async (url: string) => {
+        page.evaluate(async url => {
           return await fetch(url).catch(() => {});
         }, server.EMPTY_PAGE),
       ]);
@@ -547,33 +566,33 @@ describe('Page', function () {
       });
     });
     it('should have location and stack trace for console API calls', async () => {
-      const {page, server, isChrome} = await getTestState();
+      const {page, server} = await getTestState();
 
       await page.goto(server.EMPTY_PAGE);
       const [message] = await Promise.all([
         waitEvent(page, 'console'),
-        page.goto(server.PREFIX + '/consolelog.html'),
+        page.goto(server.PREFIX + '/consoletrace.html'),
       ]);
       expect(message.text()).toBe('yellow');
-      expect(message.type()).toBe('log');
+      expect(message.type()).toBe('trace');
       expect(message.location()).toEqual({
-        url: server.PREFIX + '/consolelog.html',
+        url: server.PREFIX + '/consoletrace.html',
         lineNumber: 8,
-        columnNumber: isChrome ? 16 : 8, // console.|log vs |console.log
+        columnNumber: 16,
       });
       expect(message.stackTrace()).toEqual([
         {
-          url: server.PREFIX + '/consolelog.html',
+          url: server.PREFIX + '/consoletrace.html',
           lineNumber: 8,
-          columnNumber: isChrome ? 16 : 8, // console.|log vs |console.log
+          columnNumber: 16,
         },
         {
-          url: server.PREFIX + '/consolelog.html',
+          url: server.PREFIX + '/consoletrace.html',
           lineNumber: 11,
           columnNumber: 8,
         },
         {
-          url: server.PREFIX + '/consolelog.html',
+          url: server.PREFIX + '/consoletrace.html',
           lineNumber: 13,
           columnNumber: 6,
         },
@@ -589,7 +608,7 @@ describe('Page', function () {
         const win = window.open(
           window.location.href,
           'Title',
-          'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=780,height=200,top=0,left=0'
+          'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=780,height=200,top=0,left=0',
         )!;
         await new Promise(x => {
           return (win.onload = x);
@@ -632,7 +651,7 @@ describe('Page', function () {
 
       const metricsPromise = waitEvent<{metrics: Metrics; title: string}>(
         page,
-        'metrics'
+        'metrics',
       );
 
       await page.evaluate(() => {
@@ -723,7 +742,7 @@ describe('Page', function () {
           () => {
             return false;
           },
-          {timeout: 1}
+          {timeout: 1},
         )
         .catch(error_ => {
           return (error = error_);
@@ -760,6 +779,20 @@ describe('Page', function () {
       ]);
       expect(request.url()).toBe(server.PREFIX + '/digits/2.png');
     });
+
+    it('should be cancellable', async () => {
+      const {page, server} = await getTestState();
+
+      const abortController = new AbortController();
+
+      await page.goto(server.EMPTY_PAGE);
+      const task = page.waitForRequest(server.PREFIX + '/abortme', {
+        signal: abortController.signal,
+      });
+
+      abortController.abort();
+      await expect(task).rejects.toThrow(/aborted/);
+    });
   });
 
   describe('Page.waitForResponse', function () {
@@ -786,7 +819,7 @@ describe('Page', function () {
           () => {
             return false;
           },
-          {timeout: 1}
+          {timeout: 1},
         )
         .catch(error_ => {
           return (error = error_);
@@ -853,6 +886,17 @@ describe('Page', function () {
         }),
       ]);
       expect(response.url()).toBe(server.PREFIX + '/digits/2.png');
+    });
+    it('should be cancellable', async () => {
+      const {page, server} = await getTestState();
+
+      const abortController = new AbortController();
+      const task = page.waitForResponse(server.PREFIX + '/abortme', {
+        signal: abortController.signal,
+      });
+
+      abortController.abort();
+      await expect(task).rejects.toThrow(/aborted/);
     });
   });
 
@@ -976,6 +1020,74 @@ describe('Page', function () {
       expect(t1 - t0).toBeGreaterThan(400);
       // request finished + idle time - request finished.
       expect(t1 - t2).toBeGreaterThanOrEqual(100);
+    });
+
+    it('should be cancelable', async () => {
+      const {page, server} = await getTestState();
+      await page.goto(server.EMPTY_PAGE);
+
+      const abortController = new AbortController();
+
+      const task = page.waitForNetworkIdle({
+        signal: abortController.signal,
+      });
+      const promise = page.evaluate(async () => {
+        await Promise.all([fetch('/digits/1.png')]);
+        await fetch('/digits/2.png');
+      });
+
+      abortController.abort();
+      await expect(task).rejects.toThrow(/aborted/);
+      await promise;
+    });
+  });
+
+  describe('Page.waitForFrame', () => {
+    it('should work', async () => {
+      const {server, page} = await getTestState();
+
+      await page.goto(server.EMPTY_PAGE);
+
+      const [waitedFrame] = await Promise.all([
+        page.waitForFrame(frame => {
+          return frame.url().endsWith('/title.html');
+        }),
+        attachFrame(page, 'frame2', server.PREFIX + '/title.html'),
+      ]);
+
+      expect(waitedFrame.parentFrame()).toBe(page.mainFrame());
+    });
+
+    it('should work with a URL predicate', async () => {
+      const {server, page} = await getTestState();
+
+      await page.goto(server.EMPTY_PAGE);
+
+      const [waitedFrame] = await Promise.all([
+        page.waitForFrame(server.PREFIX + '/title.html'),
+        attachFrame(page, 'frame2', server.PREFIX + '/title.html'),
+      ]);
+
+      expect(waitedFrame.parentFrame()).toBe(page.mainFrame());
+    });
+
+    it('should be cancellable', async () => {
+      const {server, page} = await getTestState();
+
+      const abortController = new AbortController();
+      await page.goto(server.EMPTY_PAGE);
+
+      const task = page.waitForFrame(
+        frame => {
+          return frame.url().endsWith('/title.html');
+        },
+        {
+          signal: abortController.signal,
+        },
+      );
+
+      abortController.abort();
+      await expect(task).rejects.toThrow(/aborted/);
     });
   });
 
@@ -1126,7 +1238,7 @@ describe('Page', function () {
         'compute',
         function (a: number, b: number) {
           return Promise.resolve(a * b);
-        }
+        },
       );
       await Promise.all([req.continue(), exposePromise]);
       await navPromise;
@@ -1164,7 +1276,7 @@ describe('Page', function () {
       await expect(
         page.evaluate(async function () {
           return (globalThis as any).compute(3, 5);
-        })
+        }),
       ).resolves.toEqual(15);
     });
     it('should work with complex objects', async () => {
@@ -1174,7 +1286,7 @@ describe('Page', function () {
         'complexObject',
         function (a: {x: number}, b: {x: number}) {
           return {x: a.x + b.x};
-        }
+        },
       );
       const result = await page.evaluate(async () => {
         return (globalThis as any).complexObject({x: 5}, {x: 2});
@@ -1195,6 +1307,22 @@ describe('Page', function () {
       });
       expect(result).toBe(36);
     });
+
+    it('should be called once', async () => {
+      const {page, server} = await getTestState();
+
+      await page.goto(server.PREFIX + '/frames/nested-frames.html');
+      let calls = 0;
+      await page.exposeFunction('call', function () {
+        calls++;
+      });
+
+      const frame = page.frames()[1]!;
+      await frame.evaluate(async function () {
+        return (globalThis as any).call();
+      });
+      expect(calls).toBe(1);
+    });
   });
 
   describe('Page.removeExposedFunction', function () {
@@ -1210,13 +1338,15 @@ describe('Page', function () {
       expect(result).toBe(36);
       await page.removeExposedFunction('compute');
 
-      let error: Error | null = null;
-      await page
+      const error = await page
         .evaluate(async function () {
           return (globalThis as any).compute(9, 4);
         })
-        .catch(_error => {
-          return (error = _error);
+        .then(() => {
+          return null;
+        })
+        .catch(error => {
+          return error;
         });
       expect(error).toBeTruthy();
     });
@@ -1244,7 +1374,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return navigator.userAgent;
-        })
+        }),
       ).toContain('Mozilla');
       await page.setUserAgent('foobar');
       const [request] = await Promise.all([
@@ -1259,7 +1389,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return navigator.userAgent;
-        })
+        }),
       ).toContain('Mozilla');
       await page.setUserAgent('foobar');
       const [request] = await Promise.all([
@@ -1275,13 +1405,13 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return navigator.userAgent;
-        })
+        }),
       ).not.toContain('iPhone');
       await page.setUserAgent(KnownDevices['iPhone 6'].userAgent);
       expect(
         await page.evaluate(() => {
           return navigator.userAgent;
-        })
+        }),
       ).toContain('iPhone');
     });
     it('should work with additional userAgentMetdata', async () => {
@@ -1300,14 +1430,12 @@ describe('Page', function () {
       ]);
       expect(
         await page.evaluate(() => {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error: userAgentData not yet in TypeScript DOM API
           return navigator.userAgentData.mobile;
-        })
+        }),
       ).toBe(false);
 
       const uaData = await page.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error: userAgentData not yet in TypeScript DOM API
         return navigator.userAgentData.getHighEntropyValues([
           'architecture',
@@ -1321,6 +1449,31 @@ describe('Page', function () {
       expect(uaData['platform']).toBe('MockOS');
       expect(uaData['platformVersion']).toBe('3.1');
       expect(request.headers['user-agent']).toBe('MockBrowser');
+    });
+    it('should restore original', async () => {
+      const {page, server} = await getTestState();
+
+      const userAgent = await page.evaluate(() => {
+        return navigator.userAgent;
+      });
+
+      await page.setUserAgent('foobar');
+      const [requestWithOverride] = await Promise.all([
+        server.waitForRequest('/empty.html'),
+        page.goto(server.EMPTY_PAGE),
+      ]);
+      expect(requestWithOverride.headers['user-agent']).toBe('foobar');
+
+      await page.setUserAgent('');
+      const [request] = await Promise.all([
+        server.waitForRequest('/empty.html'),
+        page.goto(server.EMPTY_PAGE),
+      ]);
+      expect(request.headers['user-agent']).toBe(userAgent);
+      const userAgentRestored = await page.evaluate(() => {
+        return navigator.userAgent;
+      });
+      expect(userAgentRestored).toBe(userAgent);
     });
   });
 
@@ -1416,7 +1569,7 @@ describe('Page', function () {
       expect(
         await page.$eval('div', div => {
           return div.textContent;
-        })
+        }),
       ).toBe('hello world');
     });
     it('should work with accents', async () => {
@@ -1426,7 +1579,7 @@ describe('Page', function () {
       expect(
         await page.$eval('div', div => {
           return div.textContent;
-        })
+        }),
       ).toBe('aberración');
     });
     it('should work with emojis', async () => {
@@ -1436,7 +1589,7 @@ describe('Page', function () {
       expect(
         await page.$eval('div', div => {
           return div.textContent;
-        })
+        }),
       ).toBe('🐥');
     });
     it('should work with newline', async () => {
@@ -1446,7 +1599,7 @@ describe('Page', function () {
       expect(
         await page.$eval('div', div => {
           return div.textContent;
-        })
+        }),
       ).toBe('\n');
     });
     it('should work with comments outside HTML tag', async () => {
@@ -1473,7 +1626,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(undefined);
 
       // By-pass CSP and try one more time.
@@ -1483,7 +1636,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(42);
     });
 
@@ -1501,7 +1654,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(undefined);
 
       // By-pass CSP and try one more time.
@@ -1511,7 +1664,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(42);
     });
 
@@ -1524,7 +1677,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(42);
 
       await page.goto(server.CROSS_PROCESS_PREFIX + '/csp.html');
@@ -1532,7 +1685,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(42);
     });
     it('should bypass CSP in iframes as well', async () => {
@@ -1544,7 +1697,7 @@ describe('Page', function () {
         const frame = (await attachFrame(
           page,
           'frame1',
-          server.PREFIX + '/csp.html'
+          server.PREFIX + '/csp.html',
         ))!;
         await frame
           .addScriptTag({content: 'window.__injected = 42;'})
@@ -1554,7 +1707,7 @@ describe('Page', function () {
         expect(
           await frame.evaluate(() => {
             return (globalThis as any).__injected;
-          })
+          }),
         ).toBe(undefined);
       }
 
@@ -1566,7 +1719,7 @@ describe('Page', function () {
         const frame = (await attachFrame(
           page,
           'frame1',
-          server.PREFIX + '/csp.html'
+          server.PREFIX + '/csp.html',
         ))!;
         await frame
           .addScriptTag({content: 'window.__injected = 42;'})
@@ -1576,7 +1729,7 @@ describe('Page', function () {
         expect(
           await frame.evaluate(() => {
             return (globalThis as any).__injected;
-          })
+          }),
         ).toBe(42);
       }
     });
@@ -1594,7 +1747,7 @@ describe('Page', function () {
         error = error_ as Error;
       }
       expect(error.message).toBe(
-        'Exactly one of `url`, `path`, or `content` must be specified.'
+        'Exactly one of `url`, `path`, or `content` must be specified.',
       );
     });
 
@@ -1607,7 +1760,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(42);
     });
 
@@ -1619,7 +1772,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (window as unknown as {__es6injected: number}).__es6injected;
-        })
+        }),
       ).toBe(42);
     });
 
@@ -1637,7 +1790,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (window as unknown as {__es6injected: number}).__es6injected;
-        })
+        }),
       ).toBe(42);
     });
 
@@ -1655,7 +1808,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (window as unknown as {__es6injected: number}).__es6injected;
-        })
+        }),
       ).toBe(42);
     });
 
@@ -1687,7 +1840,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(42);
     });
 
@@ -1715,7 +1868,7 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).__injected;
-        })
+        }),
       ).toBe(35);
     });
 
@@ -1768,7 +1921,7 @@ describe('Page', function () {
         error = error_ as Error;
       }
       expect(error.message).toBe(
-        'Exactly one of `url`, `path`, or `content` must be specified.'
+        'Exactly one of `url`, `path`, or `content` must be specified.',
       );
     });
 
@@ -1780,8 +1933,8 @@ describe('Page', function () {
       expect(styleHandle.asElement()).not.toBeNull();
       expect(
         await page.evaluate(
-          `window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')`
-        )
+          `window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')`,
+        ),
       ).toBe('rgb(255, 0, 0)');
     });
 
@@ -1812,8 +1965,8 @@ describe('Page', function () {
       expect(styleHandle.asElement()).not.toBeNull();
       expect(
         await page.evaluate(
-          `window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')`
-        )
+          `window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')`,
+        ),
       ).toBe('rgb(255, 0, 0)');
     });
 
@@ -1825,7 +1978,7 @@ describe('Page', function () {
         path: path.join(__dirname, '../assets/injectedstyle.css'),
       });
       using styleHandle = (await page.$('style'))!;
-      const styleContent = await page.evaluate((style: HTMLStyleElement) => {
+      const styleContent = await page.evaluate(style => {
         return style.innerHTML;
       }, styleHandle);
       expect(styleContent).toContain(path.join('assets', 'injectedstyle.css'));
@@ -1841,8 +1994,8 @@ describe('Page', function () {
       expect(styleHandle.asElement()).not.toBeNull();
       expect(
         await page.evaluate(
-          `window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')`
-        )
+          `window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')`,
+        ),
       ).toBe('rgb(0, 128, 0)');
     });
 
@@ -1891,7 +2044,7 @@ describe('Page', function () {
 
       await page.setJavaScriptEnabled(false);
       await page.goto(
-        'data:text/html, <script>var something = "forbidden"</script>'
+        'data:text/html, <script>var something = "forbidden"</script>',
       );
       let error!: Error;
       await page.evaluate('something').catch(error_ => {
@@ -1901,7 +2054,7 @@ describe('Page', function () {
 
       await page.setJavaScriptEnabled(true);
       await page.goto(
-        'data:text/html, <script>var something = "forbidden"</script>'
+        'data:text/html, <script>var something = "forbidden"</script>',
       );
       expect(await page.evaluate('something')).toBe('forbidden');
     });
@@ -2003,12 +2156,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onInput;
-        })
+        }),
       ).toEqual(['blue']);
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onChange;
-        })
+        }),
       ).toEqual(['blue']);
     });
     it('should select only first option', async () => {
@@ -2019,12 +2172,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onInput;
-        })
+        }),
       ).toEqual(['blue']);
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onChange;
-        })
+        }),
       ).toEqual(['blue']);
     });
     it('should not throw when select causes navigation', async () => {
@@ -2053,12 +2206,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onInput;
-        })
+        }),
       ).toEqual(['blue', 'green', 'red']);
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onChange;
-        })
+        }),
       ).toEqual(['blue', 'green', 'red']);
     });
     it('should respect event bubbling', async () => {
@@ -2069,12 +2222,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onBubblingInput;
-        })
+        }),
       ).toEqual(['blue']);
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onBubblingChange;
-        })
+        }),
       ).toEqual(['blue']);
     });
     it('should throw when element is not a <select>', async () => {
@@ -2105,7 +2258,7 @@ describe('Page', function () {
       expect(
         result.reduce((accumulator, current) => {
           return ['blue', 'black', 'magenta'].includes(current) && accumulator;
-        }, true)
+        }, true),
       ).toEqual(true);
     });
     it('should return an array of one element when multiple is not set', async () => {
@@ -2117,7 +2270,7 @@ describe('Page', function () {
         '42',
         'blue',
         'black',
-        'magenta'
+        'magenta',
       );
       expect(result).toHaveLength(1);
     });
@@ -2139,12 +2292,10 @@ describe('Page', function () {
       await page.select('select');
       expect(
         await page.$eval('select', select => {
-          return Array.from((select as HTMLSelectElement).options).every(
-            option => {
-              return !option.selected;
-            }
-          );
-        })
+          return Array.from(select.options).every(option => {
+            return !option.selected;
+          });
+        }),
       ).toEqual(true);
     });
     it('should deselect all options when passed no values for a select without multiple', async () => {
@@ -2155,12 +2306,10 @@ describe('Page', function () {
       await page.select('select');
       expect(
         await page.$eval('select', select => {
-          return Array.from((select as HTMLSelectElement).options).filter(
-            option => {
-              return option.selected;
-            }
-          )[0]!.value;
-        })
+          return Array.from(select.options).filter(option => {
+            return option.selected;
+          })[0]!.value;
+        }),
       ).toEqual('');
     });
     it('should throw if passed in non-strings', async () => {
@@ -2189,12 +2338,12 @@ describe('Page', function () {
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onInput;
-        })
+        }),
       ).toEqual(['blue']);
       expect(
         await page.evaluate(() => {
           return (globalThis as any).result.onChange;
-        })
+        }),
       ).toEqual(['blue']);
     });
   });
@@ -2263,24 +2412,24 @@ describe('Page', function () {
       expect(
         await page1.evaluate(() => {
           return document.visibilityState;
-        })
+        }),
       ).toBe('visible');
       expect(
         await page2.evaluate(() => {
           return document.visibilityState;
-        })
+        }),
       ).toBe('hidden');
 
       await page2.bringToFront();
       expect(
         await page1.evaluate(() => {
           return document.visibilityState;
-        })
+        }),
       ).toBe('hidden');
       expect(
         await page2.evaluate(() => {
           return document.visibilityState;
-        })
+        }),
       ).toBe('visible');
 
       await page1.close();

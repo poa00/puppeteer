@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {rm} from 'fs/promises';
+import {access, constants, rm, watch} from 'fs/promises';
 import {tmpdir} from 'os';
-import path from 'path';
+import {basename, dirname} from 'path';
 
 import expect from 'expect';
 import type {Frame} from 'puppeteer-core/internal/api/Frame.js';
@@ -16,8 +16,6 @@ import {Deferred} from 'puppeteer-core/internal/util/Deferred.js';
 
 import {compare} from './golden-utils.js';
 
-const PROJECT_ROOT = path.join(__dirname, '..', '..');
-
 declare module 'expect' {
   interface Matchers<R> {
     toBeGolden(pathOrBuffer: string | Buffer): R;
@@ -26,15 +24,20 @@ declare module 'expect' {
 
 export const extendExpectWithToBeGolden = (
   goldenDir: string,
-  outputDir: string
+  outputDir: string,
 ): void => {
   expect.extend({
-    toBeGolden: (testScreenshot: string | Buffer, goldenFilePath: string) => {
+    toBeGolden: (
+      testScreenshot: string | Uint8Array,
+      goldenFilePath: string,
+    ) => {
       const result = compare(
         goldenDir,
         outputDir,
-        testScreenshot,
-        goldenFilePath
+        typeof testScreenshot === 'string'
+          ? testScreenshot
+          : Buffer.from(testScreenshot),
+        goldenFilePath,
       );
 
       if (result.pass) {
@@ -56,28 +59,26 @@ export const extendExpectWithToBeGolden = (
   });
 };
 
-export const projectRoot = (): string => {
-  return PROJECT_ROOT;
-};
-
 export const attachFrame = async (
   pageOrFrame: Page | Frame,
   frameId: string,
-  url: string
-): Promise<Frame | undefined> => {
-  using handle = await pageOrFrame.evaluateHandle(attachFrame, frameId, url);
-  return (await handle.asElement()?.contentFrame()) ?? undefined;
-
-  async function attachFrame(frameId: string, url: string) {
-    const frame = document.createElement('iframe');
-    frame.src = url;
-    frame.id = frameId;
-    document.body.appendChild(frame);
-    await new Promise(x => {
-      return (frame.onload = x);
-    });
-    return frame;
-  }
+  url: string,
+): Promise<Frame> => {
+  using handle = await pageOrFrame.evaluateHandle(
+    async (frameId, url) => {
+      const frame = document.createElement('iframe');
+      frame.src = url;
+      frame.id = frameId;
+      document.body.appendChild(frame);
+      await new Promise(x => {
+        return (frame.onload = x);
+      });
+      return frame;
+    },
+    frameId,
+    url,
+  );
+  return await handle.contentFrame();
 };
 
 export const isFavicon = (request: {url: () => string | string[]}): boolean => {
@@ -86,41 +87,49 @@ export const isFavicon = (request: {url: () => string | string[]}): boolean => {
 
 export async function detachFrame(
   pageOrFrame: Page | Frame,
-  frameId: string
+  frameId: string,
 ): Promise<void> {
-  await pageOrFrame.evaluate(detachFrame, frameId);
-
-  function detachFrame(frameId: string) {
+  await pageOrFrame.evaluate(frameId => {
     const frame = document.getElementById(frameId) as HTMLIFrameElement;
     frame.remove();
-  }
+  }, frameId);
 }
 
 export async function navigateFrame(
   pageOrFrame: Page | Frame,
   frameId: string,
-  url: string
+  url: string,
 ): Promise<void> {
-  await pageOrFrame.evaluate(navigateFrame, frameId, url);
-
-  function navigateFrame(frameId: string, url: string) {
-    const frame = document.getElementById(frameId) as HTMLIFrameElement;
-    frame.src = url;
-    return new Promise(x => {
-      return (frame.onload = x);
-    });
-  }
+  await pageOrFrame.evaluate(
+    (frameId, url) => {
+      const frame = document.getElementById(frameId) as HTMLIFrameElement;
+      frame.src = url;
+      return new Promise(x => {
+        return (frame.onload = x);
+      });
+    },
+    frameId,
+    url,
+  );
 }
 
-export const dumpFrames = (frame: Frame, indentation?: string): string[] => {
-  indentation = indentation || '';
+export const dumpFrames = async (
+  frame: Frame,
+  indentation = '',
+): Promise<string[]> => {
   let description = frame.url().replace(/:\d{4,5}\//, ':<PORT>/');
-  if (frame.name()) {
-    description += ' (' + frame.name() + ')';
+  using element = await frame.frameElement();
+  if (element) {
+    const nameOrId = await element.evaluate(frame => {
+      return frame.name || frame.id;
+    });
+    if (nameOrId) {
+      description += ' (' + nameOrId + ')';
+    }
   }
   const result = [indentation + description];
   for (const child of frame.childFrames()) {
-    result.push(...dumpFrames(child, '    ' + indentation));
+    result.push(...(await dumpFrames(child, '    ' + indentation)));
   }
   return result;
 };
@@ -130,7 +139,7 @@ export const waitEvent = async <T = any>(
   eventName: string,
   predicate: (event: T) => boolean = () => {
     return true;
-  }
+  },
 ): Promise<T> => {
   const deferred = Deferred.create<T>({
     timeout: 5000,
@@ -158,7 +167,7 @@ export interface FilePlaceholder {
 export function getUniqueVideoFilePlaceholder(): FilePlaceholder {
   return {
     filename: `${tmpdir()}/test-video-${Math.round(
-      Math.random() * 10000
+      Math.random() * 10000,
     )}.webm`,
     [Symbol.dispose]() {
       void rmIfExists(this.filename);
@@ -168,4 +177,35 @@ export function getUniqueVideoFilePlaceholder(): FilePlaceholder {
 
 export function rmIfExists(file: string): Promise<void> {
   return rm(file).catch(() => {});
+}
+
+export async function waitForFileExistence(
+  filePath: string,
+  timeout = 1000,
+): Promise<void> {
+  try {
+    await access(filePath, constants.R_OK);
+  } catch {
+    return await new Promise(async (resolve, reject) => {
+      const abortController = new AbortController();
+      const timer = setTimeout(() => {
+        abortController.abort();
+        reject(
+          new Error(
+            `Exceeded timeout of ${timeout} ms for watching ${filePath}`,
+          ),
+        );
+      }, timeout);
+      const dir = dirname(filePath);
+      const fileBasename = basename(filePath);
+      const watcher = watch(dir, {signal: abortController.signal});
+      for await (const event of watcher) {
+        if (event.eventType === 'rename' && event.filename === fileBasename) {
+          clearTimeout(timer);
+          abortController.abort();
+          resolve();
+        }
+      }
+    });
+  }
 }

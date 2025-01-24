@@ -30,7 +30,7 @@ export interface ItEvaluatesFn {
   (
     title: string,
     options: ItEvaluatesOptions,
-    getScriptContent: (cwd: string) => Promise<string>
+    getScriptContent: (cwd: string) => Promise<string>,
   ): void;
   (title: string, getScriptContent: (cwd: string) => Promise<string>): void;
 }
@@ -38,6 +38,7 @@ export interface ItEvaluatesFn {
 export interface SandboxOptions {
   dependencies?: string[];
   devDependencies?: string[];
+  isolateTests?: boolean;
   /**
    * This should be idempotent.
    */
@@ -52,7 +53,11 @@ declare module 'mocha' {
      */
     sandbox: string;
     env: NodeJS.ProcessEnv | undefined;
-    runScript: (content: string, type: 'cjs' | 'mjs') => Promise<void>;
+    runScript: (
+      content: string,
+      type: 'cjs' | 'mjs',
+      args?: string[],
+    ) => Promise<void>;
   }
 }
 
@@ -61,7 +66,10 @@ declare module 'mocha' {
  * specified dependencies.
  */
 export const configureSandbox = (options: SandboxOptions): void => {
-  before(async function (): Promise<void> {
+  const beforeHook = options.isolateTests ? beforeEach : before;
+  const afterHook = options.isolateTests ? afterEach : after;
+
+  beforeHook(async function (): Promise<void> {
     console.time('before');
     const sandbox = await mkdtemp(join(tmpdir(), 'puppeteer-'));
     const dependencies = (options.dependencies ?? []).map(module => {
@@ -105,21 +113,25 @@ export const configureSandbox = (options: SandboxOptions): void => {
           cwd: sandbox,
           env,
           shell: true,
-        }
+        },
       );
     }
 
     this.sandbox = sandbox;
     this.env = env;
-    this.runScript = async (content: string, type: 'cjs' | 'mjs') => {
+    this.runScript = async (
+      content: string,
+      type: 'cjs' | 'mjs',
+      args?: string[],
+    ) => {
       const script = join(sandbox, `script-${crypto.randomUUID()}.${type}`);
       await writeFile(script, content);
-      await execFile('node', [script], {cwd: sandbox, env});
+      await execFile('node', [script, ...(args ?? [])], {cwd: sandbox, env});
     };
     console.timeEnd('before');
   });
 
-  after(async function () {
+  afterHook(async function () {
     console.time('after');
     if (!process.env['KEEP_SANDBOX']) {
       await rm(this.sandbox, {recursive: true, force: true, maxRetries: 5});

@@ -25,7 +25,6 @@ on:
           - chrome-bidi
           - firefox-headful
           - firefox-headless
-          - firefox-bidi
       os:
         description: On which OS to run?
         required: true
@@ -49,52 +48,43 @@ jobs:
       fail-fast: false
     steps:
       - name: Check out repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           cache: npm
           node-version-file: '.nvmrc'
-      - name: Set up FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@5058c9851b649ced05c3e73a4fb5ef2995a89127 # v2.0.0
       - name: Install dependencies
         run: npm ci
         env:
           PUPPETEER_SKIP_DOWNLOAD: true
       # Set up GitHub Actions caching for Wireit.
-      - uses: google/wireit@4aad131006ea85c1e42af927534ebb13426dd730 # setup-github-actions-caching/v1.0.2
+      - uses: google/wireit@eea3c9f0385a39e6eb4ff6a6daa273311381d436 # setup-github-actions-caching/v2.0.2
       - name: Build packages
         run: npm run build -w @puppeteer-test/test
-      - name: Setup cache for Chrome binary
-        if: ${{ inputs.suite != 'chrome-bidi' }}
-        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+      - name: Setup cache for browsers
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
-          path: ~/.cache/puppeteer/chrome
-          key: Chrome-${{ runner.os }}-${{ hashFiles('packages/puppeteer-core/src/revisions.ts') }}-${{ hashFiles('packages/puppeteer/src/node/install.ts') }}
-      - name: Install Chrome
-        if: ${{ inputs.suite != 'chrome-bidi' }}
+          path: ~/.cache/puppeteer/
+          key: Browsers-${{ runner.os }}-${{ hashFiles('packages/puppeteer-core/src/revisions.ts') }}-${{ hashFiles('packages/puppeteer/src/node/install.ts') }}
+      - name: Install browsers
         run: npm run postinstall
-      - name: Setup cache for Chrome Canary binary
-        if: ${{ inputs.suite == 'chrome-bidi' }}
-        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
-        with:
-          path: ~/.cache/puppeteer/chrome-canary
-          key: Chrome-Canary-${{ runner.os }}-${{ hashFiles('package.json') }}
-      - name: Install Chrome Canary
-        if: ${{ inputs.suite == 'chrome-bidi' }}
-        id: browser
-        run: node tools/download_chrome_bidi.mjs ~/.cache/puppeteer/chrome-canary
-      - name: Run all tests (for non-Linux)
-        if: ${{ inputs.os != 'ubuntu-latest' }}
-        run: npm run test -- --test-suite ${{ inputs.suite }} --save-stats-to /tmp/artifacts/${{ github.event_name }}_INSERTID.json
+      - name: Run all tests (MacOS)
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: npm run test -- --test-suite ${{ matrix.suite }} --save-stats-to /tmp/artifacts/${{ github.event_name }}_INSERTID.json
         env:
-          PUPPETEER_EXECUTABLE_PATH: ${{ steps.browser.outputs.executablePath }}
           PUPPETEER_DEFLAKE_TESTS: '${{ inputs.tests }}'
-      - name: Run all tests (for Linux)
-        if: ${{ inputs.os == 'ubuntu-latest' }}
-        run: xvfb-run --auto-servernum npm run test -- --test-suite ${{ inputs.suite }} --save-stats-to /tmp/artifacts/${{ github.event_name }}_INSERTID.json
+          PUPPETEER_DEFLAKE_RETRIES: ${{ inputs.retries }}
+      - name: Run all tests (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: npm run test -- -- --test-suite ${{ matrix.suite }} --save-stats-to /tmp/artifacts/${{ github.event_name }}_INSERTID.json
         env:
-          PUPPETEER_EXECUTABLE_PATH: ${{ steps.browser.outputs.executablePath }}
+          PUPPETEER_DEFLAKE_TESTS: '${{ inputs.tests }}'
+          PUPPETEER_DEFLAKE_RETRIES: ${{ inputs.retries }}
+      - name: Run all tests (Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: xvfb-run --auto-servernum npm run test -- --test-suite ${{ matrix.suite }} --save-stats-to /tmp/artifacts/${{ github.event_name }}_INSERTID.json
+        env:
           PUPPETEER_DEFLAKE_TESTS: '${{ inputs.tests }}'
           PUPPETEER_DEFLAKE_RETRIES: ${{ inputs.retries }}
 
@@ -106,30 +96,26 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           cache: npm
           node-version-file: '.nvmrc'
-      - name: Set up FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@5058c9851b649ced05c3e73a4fb5ef2995a89127 # v2.0.0
       - name: Install dependencies
         run: npm ci
         env:
           PUPPETEER_SKIP_DOWNLOAD: true
       # Set up GitHub Actions caching for Wireit.
-      - uses: google/wireit@4aad131006ea85c1e42af927534ebb13426dd730 # setup-github-actions-caching/v1.0.2
+      - uses: google/wireit@eea3c9f0385a39e6eb4ff6a6daa273311381d436 # setup-github-actions-caching/v2.0.2
       - name: Build packages
         run: npm run build -w @puppeteer-test/test
-      - name: Setup cache for Firefox binary
-        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+      - name: Setup cache for browsers
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
-          path: ~/.cache/puppeteer/firefox
-          key: Firefox-${{ runner.os }}-${{ hashFiles('packages/puppeteer-core/src/revisions.ts') }}-${{ hashFiles('packages/puppeteer/src/node/install.ts') }}
-      - name: Install Firefox
-        env:
-          PUPPETEER_PRODUCT: firefox
+          path: ~/.cache/puppeteer/
+          key: Browsers-${{ runner.os }}-${{ hashFiles('packages/puppeteer-core/src/revisions.ts') }}-${{ hashFiles('packages/puppeteer/src/node/install.ts') }}
+      - name: Install browsers
         run: npm run postinstall
       - name: Run all tests (for non-Linux)
         if: ${{ inputs.os != 'ubuntu-latest' }}

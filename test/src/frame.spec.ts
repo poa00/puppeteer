@@ -7,6 +7,7 @@
 import expect from 'expect';
 import {CDPSession} from 'puppeteer-core/internal/api/CDPSession.js';
 import type {Frame} from 'puppeteer-core/internal/api/Frame.js';
+import {assert} from 'puppeteer-core/internal/util/assert.js';
 
 import {getTestState, setupTestBrowserHooks} from './mocha-utils.js';
 import {
@@ -78,7 +79,7 @@ describe('Frame specs', function () {
       const {page, server} = await getTestState();
 
       await page.goto(server.PREFIX + '/frames/nested-frames.html');
-      expect(dumpFrames(page.mainFrame())).toEqual([
+      expect(await dumpFrames(page.mainFrame())).toEqual([
         'http://localhost:<PORT>/frames/nested-frames.html',
         '    http://localhost:<PORT>/frames/two-frames.html (2frames)',
         '        http://localhost:<PORT>/frames/frame.html (uno)',
@@ -221,7 +222,7 @@ describe('Frame specs', function () {
       const {page, server} = await getTestState();
 
       await page.goto(server.PREFIX + '/shadow.html');
-      await page.evaluate(async (url: string) => {
+      await page.evaluate(async url => {
         const frame = document.createElement('iframe');
         frame.src = url;
         document.body.shadowRoot!.appendChild(frame);
@@ -231,23 +232,6 @@ describe('Frame specs', function () {
       }, server.EMPTY_PAGE);
       expect(page.frames()).toHaveLength(2);
       expect(page.frames()[1]!.url()).toBe(server.EMPTY_PAGE);
-    });
-    it('should report frame.name()', async () => {
-      const {page, server} = await getTestState();
-
-      await attachFrame(page, 'theFrameId', server.EMPTY_PAGE);
-      await page.evaluate((url: string) => {
-        const frame = document.createElement('iframe');
-        frame.name = 'theFrameName';
-        frame.src = url;
-        document.body.appendChild(frame);
-        return new Promise(x => {
-          return (frame.onload = x);
-        });
-      }, server.EMPTY_PAGE);
-      expect(page.frames()[0]!.name()).toBe('');
-      expect(page.frames()[1]!.name()).toBe('theFrameId');
-      expect(page.frames()[2]!.name()).toBe('theFrameName');
     });
     it('should report frame.parent()', async () => {
       const {page, server} = await getTestState();
@@ -283,7 +267,7 @@ describe('Frame specs', function () {
 
       expect(page.frames()).toHaveLength(2);
       expect(page.frames()[1]!.url()).toBe(
-        server.PREFIX + '/frames/frame.html?param=value#fragment'
+        server.PREFIX + '/frames/frame.html?param=value#fragment',
       );
     });
     it('should support lazy frames', async () => {
@@ -295,7 +279,7 @@ describe('Frame specs', function () {
       expect(
         page.frames().map(frame => {
           return frame._hasStartedLoading;
-        })
+        }),
       ).toEqual([true, true, false]);
     });
   });
@@ -304,6 +288,76 @@ describe('Frame specs', function () {
     it('should return the client instance', async () => {
       const {page} = await getTestState();
       expect(page.mainFrame().client).toBeInstanceOf(CDPSession);
+    });
+  });
+
+  describe('Frame.prototype.frameElement', function () {
+    it('should work', async () => {
+      const {page, server} = await getTestState();
+
+      await attachFrame(page, 'theFrameId', server.EMPTY_PAGE);
+      await page.evaluate((url: string) => {
+        const frame = document.createElement('iframe');
+        frame.name = 'theFrameName';
+        frame.src = url;
+        document.body.appendChild(frame);
+        return new Promise(x => {
+          return (frame.onload = x);
+        });
+      }, server.EMPTY_PAGE);
+      using frame0 = await page.frames()[0]?.frameElement();
+      assert(!frame0);
+      using frame1 = await page.frames()[1]?.frameElement();
+      assert(frame1);
+      using frame2 = await page.frames()[2]?.frameElement();
+      assert(frame2);
+      const name1 = await frame1.evaluate(frame => {
+        return frame.id;
+      });
+      expect(name1).toBe('theFrameId');
+      const name2 = await frame2.evaluate(frame => {
+        return frame.name;
+      });
+      expect(name2).toBe('theFrameName');
+    });
+
+    it('should handle shadow roots', async () => {
+      const {page} = await getTestState();
+      await page.setContent(`
+        <div id="shadow-host"></div>
+        <script>
+          const host = document.getElementById('shadow-host');
+          const shadowRoot = host.attachShadow({ mode: 'closed' });
+          const frame = document.createElement('iframe');
+          frame.srcdoc = '<p>Inside frame</p>';
+          shadowRoot.appendChild(frame);
+        </script>
+      `);
+      const frame = page.frames()[1]!;
+      using frameElement = (await frame.frameElement())!;
+      expect(
+        await frameElement.evaluate(el => {
+          return el.tagName.toLocaleLowerCase();
+        }),
+      ).toBe('iframe');
+    });
+
+    it('should return ElementHandle in the correct world', async () => {
+      const {page, server} = await getTestState();
+      await attachFrame(page, 'theFrameId', server.EMPTY_PAGE);
+      await page.evaluate(() => {
+        // @ts-expect-error different page context
+        globalThis['isMainWorld'] = true;
+      }, server.EMPTY_PAGE);
+      expect(page.frames()).toHaveLength(2);
+      using frame1 = await page.frames()[1]!.frameElement();
+      assert(frame1);
+      assert(
+        await frame1.evaluate(() => {
+          // @ts-expect-error different page context
+          return globalThis['isMainWorld'];
+        }),
+      );
     });
   });
 });

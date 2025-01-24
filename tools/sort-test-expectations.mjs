@@ -78,26 +78,36 @@ const toBeRemoved = new Set();
 for (let i = testExpectations.length - 1; i >= 0; i--) {
   const expectation = testExpectations[i];
   const params = new Set(expectation.parameters);
-  const labels = new Set(expectation.expectations);
+  const expectations = new Set(expectation.expectations);
   const platforms = new Set(expectation.platforms);
+
+  if (params.has('cdp') && params.has('firefox')) {
+    console.log(
+      'removing',
+      expectation,
+      'because firefox-cdp is no longer tested',
+    );
+    toBeRemoved.add(expectation);
+    continue;
+  }
 
   let foundMatch = false;
   for (let j = i - 1; j >= 0; j--) {
     const candidate = testExpectations[j];
     const candidateParams = new Set(candidate.parameters);
-    const candidateLabels = new Set(candidate.expectations);
+    const candidateExpectations = new Set(candidate.expectations);
     const candidatePlatforms = new Set(candidate.platforms);
 
     if (
       testIdMatchesExpectationPattern(
         expectation.testIdPattern,
-        candidate.testIdPattern
+        candidate.testIdPattern,
       ) &&
-      isSubset(candidateParams, params) &&
-      isSubset(candidatePlatforms, platforms)
+      isSubset(candidatePlatforms, platforms) &&
+      (isSubset(params, candidateParams) || isSubset(candidateParams, params))
     ) {
       foundMatch = true;
-      if (isSubset(candidateLabels, labels)) {
+      if (isSubset(candidateExpectations, expectations)) {
         console.log('removing', expectation, 'already covered by', candidate);
         toBeRemoved.add(expectation);
       }
@@ -105,11 +115,11 @@ for (let i = testExpectations.length - 1; i >= 0; i--) {
     }
   }
 
-  if (!foundMatch && isSubset(new Set(['PASS']), labels)) {
+  if (!foundMatch && isSubset(new Set(['PASS']), expectations)) {
     console.log(
       'removing',
       expectation,
-      'because the default expectation is to pass'
+      'because the default expectation is to pass',
     );
     toBeRemoved.add(expectation);
   }
@@ -134,7 +144,7 @@ if (process.argv.includes('--lint')) {
     JSON.stringify(committedExpectations) !== JSON.stringify(testExpectations)
   ) {
     console.error(
-      `${source} is not formatted properly. Run 'npm run format:expectations'.`
+      `${source} is not formatted properly. Run 'npm run format:expectations'.`,
     );
     process.exit(1);
   }
@@ -142,7 +152,7 @@ if (process.argv.includes('--lint')) {
   if (missingComments.length > 0) {
     console.error(
       `${source}: missing comments for the following expectations:`,
-      missingComments
+      missingComments,
     );
     process.exit(1);
   }
@@ -152,6 +162,6 @@ if (process.argv.includes('--lint')) {
     await prettier.format(JSON.stringify(testExpectations), {
       ...prettierConfig,
       parser: 'json',
-    })
+    }),
   );
 }

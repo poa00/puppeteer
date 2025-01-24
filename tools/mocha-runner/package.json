@@ -13,7 +13,7 @@
   },
   "wireit": {
     "build": {
-      "command": "tsc -b && chmod +x ./bin/mocha-runner.js",
+      "command": "tsc -b && node --experimental-strip-types ../../tools/chmod.ts 755 ./bin/mocha-runner.js",
       "clean": "if-file-deleted",
       "files": [
         "src/**"
@@ -34,10 +34,10 @@
     }
   },
   "devDependencies": {
-    "@types/yargs": "17.0.32",
-    "c8": "9.1.0",
-    "glob": "10.3.10",
+    "@types/yargs": "17.0.33",
+    "c8": "10.1.3",
+    "glob": "10.4.5",
     "yargs": "17.7.2",
-    "zod": "3.22.4"
+    "zod": "3.24.1"
   }
 }
